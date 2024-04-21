@@ -36,6 +36,9 @@ smoltcp = { version = "0.11.0", default-features = false, features = [
     "socket-tcp",
     "socket-udp",
 ] }
+defmt = "0.3.5"
+defmt-rtt = "0.4"
+tb6612fng = "0.2.0"
 [profile.dev]
 # Rust debug is too slow. 
 # For debug builds always builds with some optimization
@@ -49,3 +52,4 @@ incremental = false
 lto = 'fat'
 opt-level = 's'
 overflow-checks = false
+
