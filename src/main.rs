@@ -3,12 +3,7 @@
 
 use esp_backtrace as _;
 use esp_hal::{
-    clock::ClockControl,
-    delay::Delay,
-    gpio::IO,
-    peripherals::{Peripherals},
-    mcpwm::{operator::PwmPinConfig, timer::PwmWorkingMode, PeripheralClockConfig, MCPWM},
-    prelude::*
+    clock::ClockControl, delay::Delay, gpio::{Event, IO}, interrupt, mcpwm::{operator::PwmPinConfig, timer::PwmWorkingMode, PeripheralClockConfig, MCPWM}, peripherals::{self, Peripherals}, prelude::*, systimer::SystemTimer
 };
 use tb6612fng::{Motor};
 
@@ -53,7 +48,12 @@ fn main() -> ! {
     .operator1
     .with_pin_a(io.pins.gpio7, PwmPinConfig::UP_ACTIVE_HIGH);
 
-
+    // Init ultrasonic sensor
+    let mut echo = io.pins.gpio19.into_floating_input();
+    let mut trig = io.pins.gpio18.into_push_pull_output();
+    let mut delay = Delay::new(&clocks);
+    //echo_pin.listen(Event::AnyEdge);
+    //interrupt::enable(peripherals::Interrupt::GPIO, interrupt::Priority::Priority3).unwrap();
 
     // start timer with timestamp values in the range of 0..=99 and a frequency of 20 kHz
     let timer_clock_cfg = clock_cfg
@@ -80,6 +80,9 @@ fn main() -> ! {
     )
     .unwrap();
     */
+    // let mut delay = Delay::new(&clocks);
+    // let hcsr04 = HcSR04::hc_sr04_new(trig_pin, &mut delay, &mut my_counter);
+    // let distance = hcsr04.get_distance::<f32>(DistanceUnit::MilliMeter);
 
     loop {
         log::info!("Heeeello world!");
@@ -93,5 +96,37 @@ fn main() -> ! {
         let m1cmd = motor1.current_drive_command();
         let m2cmd = motor2.current_drive_command();
         log::info!("{:?} | {:?}", m1cmd, m2cmd);
+
+        // Ultra sonic
+
+        // 1) Set pin ouput to low for 5 us to get clean low pulse
+        delay.delay(5.millis());
+        trig.set_low();
+
+        // 2) Set pin output to high (trigger) for 10us
+        trig.set_high();
+        delay.delay(10.millis());
+        trig.set_low();
+
+        // Wait until pin goes high
+        while !echo.is_high() {}
+
+        // Kick off timer measurement
+        let echo_start = SystemTimer::now();
+
+        // Wait until pin goes low
+        while !echo.is_low() {}
+
+        // Collect current timer count
+        let echo_end = SystemTimer::now();
+
+        // Calculate the elapsed timer count
+        let echo_dur = echo_end.wrapping_sub(echo_start);
+
+        // Calculate the distance in cms using formula in datasheet
+        let distance_cm = echo_dur / 16 / 58;
+
+        // Print the distance output
+        log::info!("Distance {} cm\r", distance_cm);
     }
 }
