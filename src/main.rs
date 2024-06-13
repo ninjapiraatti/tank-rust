@@ -3,7 +3,7 @@
 
 use esp_backtrace as _;
 use esp_hal::{
-    clock::ClockControl, delay::Delay, gpio::{Event, IO}, interrupt, mcpwm::{operator::PwmPinConfig, timer::PwmWorkingMode, PeripheralClockConfig, MCPWM}, peripherals::{self, Peripherals}, prelude::*, systimer::SystemTimer
+    clock::ClockControl, delay::Delay, gpio::{AnyPin, Event, Floating, GpioPin, InputPin, OutputPin, PushPull, IO}, interrupt, mcpwm::{operator::PwmPinConfig, timer::PwmWorkingMode, PeripheralClockConfig, MCPWM}, peripherals::{self, Peripherals}, prelude::*, systimer::SystemTimer
 };
 use tb6612fng::{Motor};
 
@@ -20,6 +20,46 @@ fn init_heap() {
     unsafe {
         ALLOCATOR.init(HEAP.as_mut_ptr() as *mut u8, HEAP_SIZE);
     }
+}
+
+//fn check_distance(echo: &mut AnyPin<Input<Floating>>, trig: &mut AnyPin<Output<PushPull>>, delay: &mut Delay) {
+fn check_distance<E, T>(
+    echo: &mut E,
+    trig: &mut T,
+    delay: &mut Delay,
+) where
+    E: InputPin,
+    T: OutputPin,
+{
+    // 1) Set pin ouput to low for 5 us to get clean low pulse
+    delay.delay(5.millis());
+    trig.set_low();
+
+    // 2) Set pin output to high (trigger) for 10us
+    trig.set_high();
+    delay.delay(10.millis());
+    trig.set_low();
+
+    // Wait until pin goes high
+    while !echo.is_high() {}
+
+    // Kick off timer measurement
+    let echo_start = SystemTimer::now();
+
+    // Wait until pin goes low
+    while !echo.is_low() {}
+
+    // Collect current timer count
+    let echo_end = SystemTimer::now();
+
+    // Calculate the elapsed timer count
+    let echo_dur = echo_end.wrapping_sub(echo_start);
+
+    // Calculate the distance in cms using formula in datasheet
+    let distance_cm = echo_dur / 16 / 58;
+
+    // Print the distance output
+    log::info!("Distance {} cm\r", distance_cm);
 }
 
 #[entry]
@@ -96,37 +136,6 @@ fn main() -> ! {
         let m1cmd = motor1.current_drive_command();
         let m2cmd = motor2.current_drive_command();
         log::info!("{:?} | {:?}", m1cmd, m2cmd);
-
-        // Ultra sonic
-
-        // 1) Set pin ouput to low for 5 us to get clean low pulse
-        delay.delay(5.millis());
-        trig.set_low();
-
-        // 2) Set pin output to high (trigger) for 10us
-        trig.set_high();
-        delay.delay(10.millis());
-        trig.set_low();
-
-        // Wait until pin goes high
-        while !echo.is_high() {}
-
-        // Kick off timer measurement
-        let echo_start = SystemTimer::now();
-
-        // Wait until pin goes low
-        while !echo.is_low() {}
-
-        // Collect current timer count
-        let echo_end = SystemTimer::now();
-
-        // Calculate the elapsed timer count
-        let echo_dur = echo_end.wrapping_sub(echo_start);
-
-        // Calculate the distance in cms using formula in datasheet
-        let distance_cm = echo_dur / 16 / 58;
-
-        // Print the distance output
-        log::info!("Distance {} cm\r", distance_cm);
+        check_distance(&mut echo.degrade(), &mut trig.degrade(), &mut delay);
     }
 }
