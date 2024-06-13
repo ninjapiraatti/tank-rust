@@ -3,9 +3,27 @@
 
 use esp_backtrace as _;
 use esp_hal::{
-    clock::ClockControl, delay::Delay, gpio::{AnyPin, Event, Floating, GpioPin, Input, Output, InputPin, OutputPin, PushPull, IO}, interrupt, mcpwm::{operator::PwmPinConfig, timer::PwmWorkingMode, PeripheralClockConfig, MCPWM}, peripherals::{self, Peripherals}, prelude::*, systimer::SystemTimer
+    clock::ClockControl,
+    delay::Delay,
+    gpio::{
+        AnyPin,
+        Floating,
+        Input,
+        Output,
+        PushPull,
+        IO
+    },
+    mcpwm::{
+        operator::PwmPinConfig,
+        timer::PwmWorkingMode,
+        PeripheralClockConfig,
+        MCPWM
+    },
+    peripherals::Peripherals,
+    prelude::*,
+    systimer::SystemTimer
 };
-use tb6612fng::{Motor};
+use tb6612fng::Motor;
 
 extern crate alloc;
 use core::mem::MaybeUninit;
@@ -60,7 +78,7 @@ fn main() -> ! {
     let system = peripherals.SYSTEM.split();
 
     let clocks = ClockControl::max(system.clock_control).freeze();
-    let delay = Delay::new(&clocks);
+    let mut delay = Delay::new(&clocks);
     let io = IO::new(peripherals.GPIO, peripherals.IO_MUX);
     init_heap();
 
@@ -83,7 +101,6 @@ fn main() -> ! {
     // Init ultrasonic sensor
     let mut echo = io.pins.gpio19.into_floating_input().degrade().into();
     let mut trig = io.pins.gpio18.into_push_pull_output().degrade().into();
-    let mut delay = Delay::new(&clocks);
     //echo_pin.listen(Event::AnyEdge);
     //interrupt::enable(peripherals::Interrupt::GPIO, interrupt::Priority::Priority3).unwrap();
 
