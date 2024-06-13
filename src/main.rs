@@ -3,7 +3,7 @@
 
 use esp_backtrace as _;
 use esp_hal::{
-    clock::ClockControl, delay::Delay, gpio::{AnyPin, Event, Floating, GpioPin, InputPin, OutputPin, PushPull, IO}, interrupt, mcpwm::{operator::PwmPinConfig, timer::PwmWorkingMode, PeripheralClockConfig, MCPWM}, peripherals::{self, Peripherals}, prelude::*, systimer::SystemTimer
+    clock::ClockControl, delay::Delay, gpio::{AnyPin, Event, Floating, GpioPin, Input, Output, InputPin, OutputPin, PushPull, IO}, interrupt, mcpwm::{operator::PwmPinConfig, timer::PwmWorkingMode, PeripheralClockConfig, MCPWM}, peripherals::{self, Peripherals}, prelude::*, systimer::SystemTimer
 };
 use tb6612fng::{Motor};
 
@@ -22,15 +22,7 @@ fn init_heap() {
     }
 }
 
-//fn check_distance(echo: &mut AnyPin<Input<Floating>>, trig: &mut AnyPin<Output<PushPull>>, delay: &mut Delay) {
-fn check_distance<E, T>(
-    echo: &mut E,
-    trig: &mut T,
-    delay: &mut Delay,
-) where
-    E: InputPin,
-    T: OutputPin,
-{
+fn check_distance(echo: &mut AnyPin<Input<Floating>>, trig: &mut AnyPin<Output<PushPull>>, delay: &mut Delay) {
     // 1) Set pin ouput to low for 5 us to get clean low pulse
     delay.delay(5.millis());
     trig.set_low();
@@ -89,8 +81,8 @@ fn main() -> ! {
     .with_pin_a(io.pins.gpio7, PwmPinConfig::UP_ACTIVE_HIGH);
 
     // Init ultrasonic sensor
-    let mut echo = io.pins.gpio19.into_floating_input();
-    let mut trig = io.pins.gpio18.into_push_pull_output();
+    let mut echo = io.pins.gpio19.into_floating_input().degrade().into();
+    let mut trig = io.pins.gpio18.into_push_pull_output().degrade().into();
     let mut delay = Delay::new(&clocks);
     //echo_pin.listen(Event::AnyEdge);
     //interrupt::enable(peripherals::Interrupt::GPIO, interrupt::Priority::Priority3).unwrap();
@@ -136,6 +128,6 @@ fn main() -> ! {
         let m1cmd = motor1.current_drive_command();
         let m2cmd = motor2.current_drive_command();
         log::info!("{:?} | {:?}", m1cmd, m2cmd);
-        check_distance(&mut echo.degrade(), &mut trig.degrade(), &mut delay);
+        check_distance(&mut echo, &mut trig, &mut delay);
     }
 }
