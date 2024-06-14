@@ -40,7 +40,7 @@ fn init_heap() {
     }
 }
 
-fn check_distance(echo: &mut AnyPin<Input<Floating>>, trig: &mut AnyPin<Output<PushPull>>, delay: &mut Delay) {
+fn check_distance(echo: &mut AnyPin<Input<Floating>>, trig: &mut AnyPin<Output<PushPull>>, delay: &mut Delay) -> u8 {
     // 1) Set pin ouput to low for 5 us to get clean low pulse
     delay.delay(5.millis());
     trig.set_low();
@@ -70,6 +70,7 @@ fn check_distance(echo: &mut AnyPin<Input<Floating>>, trig: &mut AnyPin<Output<P
 
     // Print the distance output
     log::info!("Distance {} cm\r", distance_cm);
+    distance_cm as u8
 }
 
 #[entry]
@@ -145,6 +146,6 @@ fn main() -> ! {
         let m1cmd = motor1.current_drive_command();
         let m2cmd = motor2.current_drive_command();
         log::info!("{:?} | {:?}", m1cmd, m2cmd);
-        check_distance(&mut echo, &mut trig, &mut delay);
+        let dist =check_distance(&mut echo, &mut trig, &mut delay);
     }
 }
