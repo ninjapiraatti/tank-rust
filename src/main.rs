@@ -40,6 +40,16 @@ fn init_heap() {
     }
 }
 
+fn move_tank(motor1: &mut Motor, motor2: &mut Motor, distance: u8) {
+    if distance < 20 {
+        motor1.set_speed(100);
+        motor2.set_speed(100);
+    } else {
+        motor1.set_speed(0);
+        motor2.set_speed(0);
+    }
+}
+
 fn check_distance(echo: &mut AnyPin<Input<Floating>>, trig: &mut AnyPin<Output<PushPull>>, delay: &mut Delay) -> u8 {
     // 1) Set pin ouput to low for 5 us to get clean low pulse
     delay.delay(5.millis());
@@ -146,6 +156,7 @@ fn main() -> ! {
         let m1cmd = motor1.current_drive_command();
         let m2cmd = motor2.current_drive_command();
         log::info!("{:?} | {:?}", m1cmd, m2cmd);
-        let dist =check_distance(&mut echo, &mut trig, &mut delay);
+        let dist = check_distance(&mut echo, &mut trig, &mut delay);
+        move_tank(dist, motor1, motor2);
     }
 }
