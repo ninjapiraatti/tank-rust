@@ -40,16 +40,6 @@ fn init_heap() {
     }
 }
 
-fn move_tank(motor1: &mut Motor, motor2: &mut Motor, distance: u8) {
-    if distance < 20 {
-        motor1.set_speed(100);
-        motor2.set_speed(100);
-    } else {
-        motor1.set_speed(0);
-        motor2.set_speed(0);
-    }
-}
-
 fn check_distance(echo: &mut AnyPin<Input<Floating>>, trig: &mut AnyPin<Output<PushPull>>, delay: &mut Delay) -> u8 {
     // 1) Set pin ouput to low for 5 us to get clean low pulse
     delay.delay(5.millis());
@@ -146,17 +136,24 @@ fn main() -> ! {
 
     loop {
         log::info!("Heeeello world!");
-        delay.delay(500.millis());
-        motor1.drive_forward(100).expect("");
-        motor2.drive_backwards(100).expect("");
-        delay.delay(1500.millis());
-        motor1.stop();
-        motor2.stop();
-        delay.delay(5500.millis());
+        delay.delay(1000.millis());
+        //motor1.drive_forward(100).expect("");
+        //motor2.drive_backwards(100).expect("");
+        //delay.delay(1500.millis());
+        //motor1.stop();
+        //motor2.stop();
+        //delay.delay(5500.millis());
         let m1cmd = motor1.current_drive_command();
         let m2cmd = motor2.current_drive_command();
         log::info!("{:?} | {:?}", m1cmd, m2cmd);
         let dist = check_distance(&mut echo, &mut trig, &mut delay);
-        move_tank(dist, motor1, motor2);
+        
+        if dist > 20 {
+            motor1.drive_forward(100).expect("");
+            motor2.drive_forward(100).expect("");
+        } else {
+            motor1.drive_backwards(100).expect("");
+            motor2.stop();
+        }
     }
 }
