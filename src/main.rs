@@ -40,7 +40,7 @@ fn init_heap() {
     }
 }
 
-fn check_distance(echo: &mut AnyPin<Input<Floating>>, trig: &mut AnyPin<Output<PushPull>>, delay: &mut Delay) -> u8 {
+fn check_distance(echo: &mut AnyPin<Input<Floating>>, trig: &mut AnyPin<Output<PushPull>>, delay: &mut Delay) -> u32 {
     // 1) Set pin ouput to low for 5 us to get clean low pulse
     delay.delay(5.millis());
     trig.set_low();
@@ -70,13 +70,14 @@ fn check_distance(echo: &mut AnyPin<Input<Floating>>, trig: &mut AnyPin<Output<P
 
     // Print the distance output
     log::info!("Distance {} cm\r", distance_cm);
-    distance_cm as u8
+    distance_cm as u32
 }
 
 #[entry]
 fn main() -> ! {
     let peripherals = Peripherals::take();
     let system = peripherals.SYSTEM.split();
+    let mut speed = 0u8;
 
     let clocks = ClockControl::max(system.clock_control).freeze();
     let mut delay = Delay::new(&clocks);
@@ -136,7 +137,8 @@ fn main() -> ! {
 
     loop {
         log::info!("Heeeello world!");
-        delay.delay(1000.millis());
+        let dist = check_distance(&mut echo, &mut trig, &mut delay);
+        delay.delay(100.millis());
         //motor1.drive_forward(100).expect("");
         //motor2.drive_backwards(100).expect("");
         //delay.delay(1500.millis());
@@ -146,13 +148,18 @@ fn main() -> ! {
         let m1cmd = motor1.current_drive_command();
         let m2cmd = motor2.current_drive_command();
         log::info!("{:?} | {:?}", m1cmd, m2cmd);
-        let dist = check_distance(&mut echo, &mut trig, &mut delay);
         
-        if dist > 20 {
-            motor1.drive_forward(100).expect("");
-            motor2.drive_forward(100).expect("");
+        if dist > 30 && dist < 1200 {
+            speed = 100;
+            motor1.drive_forward(speed).expect("");
+            motor2.drive_forward(speed).expect("");
         } else {
-            motor1.drive_backwards(100).expect("");
+            motor1.drive_backwards(60).expect("");
+            delay.delay(800.millis());
+            motor1.drive_backwards(60).expect("");
+            motor2.drive_backwards(60).expect("");
+            delay.delay(500.millis());
+            motor1.stop();
             motor2.stop();
         }
     }
