@@ -5,23 +5,11 @@ use esp_backtrace as _;
 use esp_hal::{
     clock::ClockControl,
     delay::Delay,
-    gpio::{
-        AnyPin,
-        Floating,
-        Input,
-        Output,
-        PushPull,
-        IO
-    },
-    mcpwm::{
-        operator::PwmPinConfig,
-        timer::PwmWorkingMode,
-        PeripheralClockConfig,
-        MCPWM
-    },
+    gpio::{AnyPin, Floating, Input, Output, PushPull, IO},
+    mcpwm::{operator::PwmPinConfig, timer::PwmWorkingMode, PeripheralClockConfig, MCPWM},
     peripherals::Peripherals,
     prelude::*,
-    systimer::SystemTimer
+    systimer::SystemTimer,
 };
 use tb6612fng::Motor;
 
@@ -40,7 +28,11 @@ fn init_heap() {
     }
 }
 
-fn check_distance(echo: &mut AnyPin<Input<Floating>>, trig: &mut AnyPin<Output<PushPull>>, delay: &mut Delay) -> u32 {
+fn check_distance(
+    echo: &mut AnyPin<Input<Floating>>,
+    trig: &mut AnyPin<Output<PushPull>>,
+    delay: &mut Delay,
+) -> u32 {
     // 1) Set pin ouput to low for 5 us to get clean low pulse
     delay.delay(5.millis());
     trig.set_low();
@@ -94,11 +86,11 @@ fn main() -> ! {
     mcpwm.operator0.set_timer(&mcpwm.timer0);
     mcpwm.operator1.set_timer(&mcpwm.timer0);
     let mut pwm_pinA = mcpwm
-    .operator0
-    .with_pin_a(io.pins.gpio4, PwmPinConfig::UP_ACTIVE_HIGH);
+        .operator0
+        .with_pin_a(io.pins.gpio4, PwmPinConfig::UP_ACTIVE_HIGH);
     let mut pwm_pinB = mcpwm
-    .operator1
-    .with_pin_a(io.pins.gpio7, PwmPinConfig::UP_ACTIVE_HIGH);
+        .operator1
+        .with_pin_a(io.pins.gpio7, PwmPinConfig::UP_ACTIVE_HIGH);
 
     // Init ultrasonic sensor
     let mut echo = io.pins.gpio19.into_floating_input().degrade().into();
@@ -108,10 +100,9 @@ fn main() -> ! {
 
     // start timer with timestamp values in the range of 0..=99 and a frequency of 20 kHz
     let timer_clock_cfg = clock_cfg
-    .timer_clock_with_frequency(99, PwmWorkingMode::Increase, 20u32.kHz())
-    .unwrap();
+        .timer_clock_with_frequency(99, PwmWorkingMode::Increase, 20u32.kHz())
+        .unwrap();
     mcpwm.timer0.start(timer_clock_cfg);
-
 
     // pin will be high 50% of the time
     pwm_pinA.set_timestamp(50);
@@ -148,9 +139,13 @@ fn main() -> ! {
         let m1cmd = motor1.current_drive_command();
         let m2cmd = motor2.current_drive_command();
         log::info!("{:?} | {:?}", m1cmd, m2cmd);
-        
+
         if dist > 30 && dist < 1200 {
             speed = 100;
+            motor1.drive_forward(speed).expect("");
+            motor2.drive_forward(speed).expect("");
+        } else if dist > 30 && dist < 500 {
+            speed = 30;
             motor1.drive_forward(speed).expect("");
             motor2.drive_forward(speed).expect("");
         } else {
@@ -158,7 +153,7 @@ fn main() -> ! {
             delay.delay(800.millis());
             motor1.drive_backwards(60).expect("");
             motor2.drive_backwards(60).expect("");
-            delay.delay(500.millis());
+            delay.delay(700.millis());
             motor1.stop();
             motor2.stop();
         }
