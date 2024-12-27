@@ -19,6 +19,52 @@ use core::mem::MaybeUninit;
 #[global_allocator]
 static ALLOCATOR: esp_alloc::EspHeap = esp_alloc::EspHeap::empty();
 
+struct CircularBuffer {
+    buffer: [u32; 50], // Fixed size buffer
+    index: usize,      // Current index to insert the new value
+    count: usize,      // Number of elements currently in the buffer
+}
+
+impl CircularBuffer {
+    fn new() -> Self {
+        CircularBuffer {
+            buffer: [0; 50], // Initialize with default value of 0
+            index: 0,
+            count: 0,
+        }
+    }
+
+    fn push(&mut self, value: u32) {
+        self.buffer[self.index] = value; // Insert the new value
+        self.index = (self.index + 1) % 50; // Move to the next index
+        if self.count < 50 {
+            self.count += 1; // Increase count until full
+        }
+    }
+
+    fn average(&self) -> u32 {
+        let mut sum = 0u32; // Initialize sum as u32
+        for &value in &self.buffer[..self.count] {
+            sum += value; // Sum all values
+        }
+        if self.count > 0 {
+            sum / self.count as u32 // Calculate average
+        } else {
+            0 // Return 0 if the buffer is empty
+        }
+    }
+
+    fn is_stopped(&self, threshold: u32) -> bool {
+        let avg = self.average();
+        for &value in &self.buffer[..self.count] {
+            if (value as i32 - avg as i32).abs() > threshold as i32 {
+                return false; // Deviation found
+            }
+        }
+        true // No deviation found
+    }
+}
+
 fn init_heap() {
     const HEAP_SIZE: usize = 32 * 1024;
     static mut HEAP: MaybeUninit<[u8; HEAP_SIZE]> = MaybeUninit::uninit();
@@ -126,10 +172,10 @@ fn main() -> ! {
     // let hcsr04 = HcSR04::hc_sr04_new(trig_pin, &mut delay, &mut my_counter);
     // let distance = hcsr04.get_distance::<f32>(DistanceUnit::MilliMeter);
 
+    let mut dist_history = CircularBuffer::new();
     loop {
-        log::info!("Heeeello world!");
         let dist = check_distance(&mut echo, &mut trig, &mut delay);
-        delay.delay(100.millis());
+        delay.delay(50.millis());
         //motor1.drive_forward(100).expect("");
         //motor2.drive_backwards(100).expect("");
         //delay.delay(1500.millis());
@@ -138,24 +184,41 @@ fn main() -> ! {
         //delay.delay(5500.millis());
         let m1cmd = motor1.current_drive_command();
         let m2cmd = motor2.current_drive_command();
-        log::info!("{:?} | {:?}", m1cmd, m2cmd);
+        dist_history.push(dist as u32);
+        /*
+        log::info!(
+            "{:?}\n{:?}\n{:?}\n{:?}",
+            m1cmd,
+            m2cmd,
+            dist,
+            dist_history.is_stopped(30)
+        );
+        */
 
-        if dist > 30 && dist < 1200 {
+        if dist < 40 || dist_history.is_stopped(30) {
+            log::info!(
+                "dist: {:?}\nis_stopped: {:?}",
+                dist_history.average(),
+                dist_history.is_stopped(30)
+            );
             speed = 100;
-            motor1.drive_forward(speed).expect("");
-            motor2.drive_forward(speed).expect("");
-        } else if dist > 30 && dist < 500 {
-            speed = 30;
-            motor1.drive_forward(speed).expect("");
-            motor2.drive_forward(speed).expect("");
-        } else {
-            motor1.drive_backwards(60).expect("");
-            delay.delay(800.millis());
-            motor1.drive_backwards(60).expect("");
-            motor2.drive_backwards(60).expect("");
-            delay.delay(700.millis());
+            motor1.drive_backwards(speed).expect("");
+            motor2.drive_backwards(speed).expect("");
+            delay.delay(100.millis());
             motor1.stop();
             motor2.stop();
+            motor1.drive_backwards(speed).expect("");
+            delay.delay(300.millis());
+            motor1.stop();
+            motor2.stop();
+            delay.delay(1500.millis());
+        }
+
+        if dist > 40 && dist < 2000 {
+            log::info!("Closing in at: {:?}\n", dist);
+            speed = 40;
+            motor1.drive_forward(speed).expect("");
+            motor2.drive_forward(speed).expect("");
         }
     }
 }
